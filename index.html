@@ -66,18 +66,38 @@
 
   <!-- Visitor counter script -->
 <script>
-  const counterUrl = "https://api.countapi.xyz/hit/geotoolsonline/visitors";
+  const ns = "geotoolsonline";   // namespace (your site)
+  const key = "visitors";        // counter name
+  const hitUrl = `https://api.countapi.xyz/hit/${ns}/${key}`;
+  const createUrl = `https://api.countapi.xyz/create?namespace=${ns}&key=${key}&value=0`;
 
-  fetch(counterUrl)
-    .then(res => res.json())
-    .then(res => {
-      document.getElementById("visits").textContent = res.value;
-    })
-    .catch(err => {
-      console.error("Visitor counter error:", err);
-      document.getElementById("visits").textContent = "Error";
-    });
+  function updateCounter() {
+    fetch(hitUrl)
+      .then(res => {
+        if (!res.ok) throw new Error("Counter not found");
+        return res.json();
+      })
+      .then(res => {
+        document.getElementById("visits").textContent = res.value;
+      })
+      .catch(() => {
+        // If the counter doesn't exist, create it then retry
+        fetch(createUrl)
+          .then(() => fetch(hitUrl))
+          .then(res => res.json())
+          .then(res => {
+            document.getElementById("visits").textContent = res.value;
+          })
+          .catch(err => {
+            console.error("Visitor counter error:", err);
+            document.getElementById("visits").textContent = "Error";
+          });
+      });
+  }
+
+  updateCounter();
 </script>
+
     
 
     <div class="row"><span class="pill">Tip: right-click the map to finish measuring or right click to remove points</span></div>
