@@ -54,6 +54,24 @@
     <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=geotoolsonline&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" />
   </a>
 </div>
+    <!-- ✅ Visitor Counter -->
+    <div class="row">
+      <span>Total visitors: <span id="visits">...</span></span>
+    </div>
+
+    <div class="row">
+      <span class="pill">Tip: right-click the map to finish measuring or right click to remove points</span>
+    </div>
+  </div>
+
+  <!-- Visitor counter script -->
+  <script>
+    fetch('https://api.countapi.xyz/hit/geotoolsonline.github.io/visits')
+      .then(res => res.json())
+      .then(res => {
+        document.getElementById('visits').textContent = res.value;
+      });
+  </script>
     
 
     <div class="row"><span class="pill">Tip: right-click the map to finish measuring or right click to remove points</span></div>
