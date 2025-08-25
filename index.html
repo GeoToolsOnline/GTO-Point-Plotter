@@ -47,13 +47,13 @@
       <button id="save-csv" class="btn">Save CSV</button>
     </div>
 
-    <!-- ✅ Buy Me a Coffee button inside control panel -->
-    
-      <div class="row">
+    <!-- ✅ Buy Me a Coffee button -->
+    <div class="row">
       <a href="https://www.buymeacoffee.com/geotoolsonline" target="_blank">
-    <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=geotoolsonline&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" />
-  </a>
-</div>
+        <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=geotoolsonline&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" />
+      </a>
+    </div>
+
     <!-- ✅ Visitor Counter -->
     <div class="row">
       <span>Total visitors: <span id="visits">...</span></span>
@@ -65,43 +65,45 @@
   </div>
 
   <!-- Visitor counter script -->
-<script>
-  const ns = "geotoolsonline";   // namespace (your site)
-  const key = "visitors";        // counter name
-  const hitUrl = `https://api.countapi.xyz/hit/${ns}/${key}`;
-  const createUrl = `https://api.countapi.xyz/create?namespace=${ns}&key=${key}&value=0`;
+  <script>
+  (function () {
+    const el = document.getElementById("visits");
+    if (!el) return;
 
-  function updateCounter() {
-    fetch(hitUrl)
-      .then(res => {
-        if (!res.ok) throw new Error("Counter not found");
-        return res.json();
-      })
-      .then(res => {
-        document.getElementById("visits").textContent = res.value;
-      })
-      .catch(() => {
-        // If the counter doesn't exist, create it then retry
-        fetch(createUrl)
-          .then(() => fetch(hitUrl))
-          .then(res => res.json())
-          .then(res => {
-            document.getElementById("visits").textContent = res.value;
-          })
-          .catch(err => {
-            console.error("Visitor counter error:", err);
-            document.getElementById("visits").textContent = "Error";
-          });
-      });
-  }
+    const ns  = "geotoolsonline.github.io"; // namespace = your site domain
+    const key = "visits";                   // counter key
 
-  updateCounter();
-</script>
+    const HIT    = `https://api.countapi.xyz/hit/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`;
+    const CREATE = `https://api.countapi.xyz/create?namespace=${encodeURIComponent(ns)}&key=${encodeURIComponent(key)}&value=0`;
 
-    
+    async function setText(v) { el.textContent = v; }
 
-    <div class="row"><span class="pill">Tip: right-click the map to finish measuring or right click to remove points</span></div>
-  </div>
+    async function updateCounter() {
+      try {
+        const r = await fetch(HIT, { cache: "no-store" });
+        if (!r.ok) throw new Error("hit failed " + r.status);
+        const data = await r.json();
+        return setText(data.value);
+      } catch (e1) {
+        try {
+          await fetch(CREATE, { cache: "no-store" });
+          const r2 = await fetch(HIT, { cache: "no-store" });
+          const data2 = await r2.json();
+          return setText(data2.value);
+        } catch (e2) {
+          console.error("Visitor counter error:", e2);
+          return setText("—");
+        }
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", updateCounter);
+    } else {
+      updateCounter();
+    }
+  })();
+  </script>
 
   <!-- Mapping panel shown after CSV is selected -->
   <div id="mapping-panel" class="panel">
@@ -143,6 +145,7 @@
     </div>
   </div>
 
+  <!-- Full Mapping JavaScript -->
   <script>
     // --- Projections ---
     proj4.defs("EPSG:27700", 
@@ -172,10 +175,10 @@
     // --- State ---
     const markers = [];
     let measuring = false;
-    let measureLatLngs = []; // Leaflet LatLngs
-    let measureLine = null;  // main line
-    let measurePreview = null; // dashed segment to cursor
-    let measureTooltip = null; // running total
+    let measureLatLngs = [];
+    let measureLine = null;
+    let measurePreview = null;
+    let measureTooltip = null;
 
     // For CSV mapping
     let uploadedRows = [];
@@ -203,7 +206,6 @@
       const m = L.marker([lat, lon], { icon: getIcon(iconType) }).addTo(map);
       m.bindTooltip(name, { permanent:true, direction:'right', offset:[10,0] }).openTooltip();
 
-      // Right-click delete
       m.on('contextmenu', (e) => {
         e.originalEvent?.preventDefault?.();
         map.removeLayer(m);
@@ -211,7 +213,6 @@
         if (i > -1) markers.splice(i, 1);
       });
 
-      // Double-click rename
       m.on('dblclick', () => {
         const newName = prompt('Rename point:', m.getTooltip().getContent());
         if (newName) m.setTooltipContent(newName);
@@ -224,11 +225,11 @@
     function snapToMarkers() {
       if (markers.length > 0) {
         const b = L.latLngBounds(markers.map(m => m.getLatLng()));
-        map.fitBounds(b, { padding:[50,50], maxZoom:17 }); // cap to avoid imagery "no data"
+        map.fitBounds(b, { padding:[50,50], maxZoom:17 });
       }
     }
 
-    // Simple CSV parser supporting quoted fields
+    // CSV parser
     function parseCSV(text) {
       const rows = []; let row = []; let i = 0; let field = ''; let inQuotes = false;
       while (i < text.length) {
@@ -243,7 +244,6 @@
           else if (c === '\n' || c === '\r') {
             if (field.length || row.length) { row.push(field.trim()); rows.push(row); }
             field = ''; row = [];
-            // handle \r\n combos
             if (c === '\r' && text[i+1] === '\n') i++;
           } else { field += c; }
         }
@@ -254,12 +254,10 @@
     }
 
     function showMappingPanel() {
-      const panel = document.getElementById('mapping-panel');
-      panel.style.display = 'block';
+      document.getElementById('mapping-panel').style.display = 'block';
     }
     function hideMappingPanel() {
-      const panel = document.getElementById('mapping-panel');
-      panel.style.display = 'none';
+      document.getElementById('mapping-panel').style.display = 'none';
     }
 
     function populateMappingControls() {
@@ -273,7 +271,6 @@
         const opt3 = new Option(h, idx); ySel.add(opt3);
       });
 
-      // Best-guess defaults
       const lower = header.map(h => h.toLowerCase());
       function idxOf(keys) { for (const k of keys) { const i = lower.findIndex(h => h.includes(k)); if (i !== -1) return i; } return 0; }
       nameSel.value = String(idxOf(['name', 'id', 'label']));
@@ -291,7 +288,7 @@
       const Y = toNumber(row[mapping.yIdx]);
 
       if (mapping.type === 'wgs84') {
-        lon = X; lat = Y; // x=lon, y=lat
+        lon = X; lat = Y;
       } else if (mapping.type === 'utm') {
         if (X != null && Y != null) {
           const def = utmDef(mapping.utmZone, mapping.utmHemi);
@@ -312,7 +309,7 @@
       return false;
     }
 
-    // --- File upload & mapping ---
+    // File upload
     document.getElementById('upload').addEventListener('change', (evt) => {
       const file = evt.target.files[0];
       if (!file) return;
@@ -340,6 +337,7 @@
     });
 
     document.getElementById('cancel-mapping').addEventListener('click', hideMappingPanel);
+
 
     document.getElementById('apply-mapping').addEventListener('click', () => {
       const type = document.getElementById('coord-type').value;
