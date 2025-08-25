@@ -65,13 +65,19 @@
   </div>
 
   <!-- Visitor counter script -->
-  <script>
-    fetch('https://api.countapi.xyz/hit/geotoolsonline.github.io/visits')
-      .then(res => res.json())
-      .then(res => {
-        document.getElementById('visits').textContent = res.value;
-      });
-  </script>
+<script>
+  const counterUrl = "https://api.countapi.xyz/hit/geotoolsonline/visitors";
+
+  fetch(counterUrl)
+    .then(res => res.json())
+    .then(res => {
+      document.getElementById("visits").textContent = res.value;
+    })
+    .catch(err => {
+      console.error("Visitor counter error:", err);
+      document.getElementById("visits").textContent = "Error";
+    });
+</script>
     
 
     <div class="row"><span class="pill">Tip: right-click the map to finish measuring or right click to remove points</span></div>
